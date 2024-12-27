@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motorcycle Violation Detector</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .video-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .video-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #videoStream {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .violations-section {
+            margin-top: 20px;
+        }
+
+        .violation-card {
+            display: flex;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .violation-images {
+            display: flex;
+            gap: 15px;
+        }
+
+        .violation-images img {
+            max-width: 300px;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .violation-info {
+            margin-left: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .violation-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .violation-info .license-plate {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .loading img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .file-input-label:hover {
+            background-color: #5a6268;
+        }
+
+        .selected-file {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Motorcycle Violation Detector</h1>
+        
+        <div class="upload-section">
+            <form id="uploadForm">
+                <label class="file-input-label">
+                    Choose Video
+                    <input type="file" name="video" accept=".mp4,.avi,.mov" required>
+                </label>
+                <button type="submit" style="display: none;">Upload and Process</button>
+            </form>
+            <div class="selected-file"></div>
+            <div class="error" id="uploadError"></div>
+        </div>
+
+        <div class="loading">
+            <div>Processing video... Please wait.</div>
+        </div>
+
+        <div class="video-section">
+            <div class="video-container">
+                <img id="videoStream" src="" alt="Video stream">
+            </div>
+        </div>
+
+        <div class="violations-section">
+            <h2>Detected Violations</h2>
+            <div id="violationsList"></div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // File input change handler
+            $('input[type="file"]').change(function() {
+                const fileName = $(this).val().split('\\').pop();
+                if (fileName) {
+                    $('.selected-file').text('Selected file: ' + fileName);
+                    $('button[type="submit"]').show();
+                } else {
+                    $('.selected-file').text('');
+                    $('button[type="submit"]').hide();
+                }
+            });
+
+            // Form submit handler
+            $('#uploadForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                $('#uploadError').hide();
+                $('.loading').show();
+                
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            startVideoStream(response.filename);
+                            startViolationUpdates(response.filename);
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#uploadError').text(xhr.responseJSON.error).show();
+                        $('.loading').hide();
+                    }
+                });
+            });
+
+            function startVideoStream(filename) {
+                $('.video-section').show();
+                $('#videoStream').attr('src', `/video_feed/${filename}`);
+            }
+
+            function startViolationUpdates(filename) {
+                function updateViolations() {
+                    $.get(`/violations/${filename}`, function(violations) {
+                        $('#violationsList').empty();
+                        
+                        violations.forEach(function(violation) {
+                            const card = $('<div>').addClass('violation-card');
+                            
+                            const images = $('<div>').addClass('violation-images');
+                            images.append($('<img>').attr('src', `/detections/${violation.motorcycle_image}`));
+                            images.append($('<img>').attr('src', `/detections/${violation.plate_image}`));
+                            
+                            const info = $('<div>').addClass('violation-info');
+                            info.append($('<p>').addClass('license-plate').text(`License Plate: ${violation.license_plate}`));
+                            info.append($('<p>').text(`Confidence: ${(violation.confidence * 100).toFixed(2)}%`));
+                            
+                            card.append(images).append(info);
+                            $('#violationsList').prepend(card);
+                        });
+                        
+                        if (violations.length > 0) {
+                            $('.loading').hide();
+                        }
+                    });
+                }
+
+                // Update violations every 2 seconds
+                updateViolations();
+                setInterval(updateViolations, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

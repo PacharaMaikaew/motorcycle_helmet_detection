@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helmet Detections</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: 'Kanit', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .video-section {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            aspect-ratio: 16/9;
+        }
+
+        .video-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2em;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .controls {
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #pauseButton {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        #resumeButton {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .violations-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .violations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .violation-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .violation-images {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .violation-image-container {
+            position: relative;
+        }
+
+        .violation-image-container img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .image-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .violation-info {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .license-plate {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .violation-details {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background-color: #5a6268;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .upload-button:hover {
+            background-color: #45a049;
+        }
+
+        .upload-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 15px auto;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        #uploadError {
+            display: none;
+            margin: 10px 0;
+            padding: 10px;
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        .processing {
+            color: #007bff;
+            background-color: #cce5ff;
+            border: 1px solid #b8daff;
+        }
+
+        .completed {
+            color: #28a745;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ระบบตรวจจับการไม่สวมหมวกกันน็อค</h1>
+        
+        <div class="upload-section">
+            <form id="uploadForm">
+                <label class="file-input-label">
+                    เลือกไฟล์วิดีโอ
+                    <input type="file" name="video" accept=".mp4,.avi,.mov" required>
+                </label>
+                <button type="submit" id="uploadBtn" class="upload-button" style="display: none;">
+                    อัพโหลดและเริ่มประมวลผล
+                </button>
+            </form>
+            <div class="selected-file"></div>
+            <div class="progress-bar-container">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill"></div>
+                </div>
+                <div class="progress-text">0%</div>
+            </div>
+            <div id="uploadError"></div>
+        </div>
+
+        <div class="video-section">
+            <div class="video-container">
+                <img id="videoStream" class="video-stream" alt="Video Stream">
+                <div class="loading-overlay">
+                    <div class="spinner"></div>
+                    <span>กำลังประมวลผลวิดีโอ...</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="pauseButton">หยุดการประมวลผล</button>
+                <button id="resumeButton" style="display: none;">ดำเนินการต่อ</button>
+            </div>
+            <div class="status"></div>
+        </div>
+
+        <div class="violations-section">
+            <h2>การตรวจจับการไม่สวมหมวกกันน็อค</h2>
+            <div class="violations-container">
+                <div id="violationsList" class="violations-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilename = '';
+        let videoStreamActive = false;
+        let violationUpdateInterval;
+        let streamUpdateInterval;
+
+        $(document).ready(function() {
+            $('input[type="file"]').change(function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    $('.selected-file').text('ไฟล์ที่เลือก: ' + file.name);
+                    $('#uploadBtn').show();
+                } else {
+                    $('.selected-file').text('');
+                    $('#uploadBtn').hide();
+                }
+            });
+
+            $('#uploadForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const file = formData.get('video');
+                
+                if (file.size > 2 * 1024 * 1024 * 1024) {
+                    showError('ขนาดไฟล์เกิน 2GB');
+                    return;
+                }
+
+                $('#uploadBtn').prop('disabled', true).text('กำลังอัพโหลด...');
+                $('.progress-bar-container').show();
+                $('.progress-bar-fill').css('width', '0%');
+                $('.progress-text').text('0%');
+                showStatus('กำลังอัพโหลดวิดีโอ...', 'processing');
+
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    xhr: function() {
+                        const xhr = new XMLHttpRequest();
+                        xhr.upload.addEventListener('progress', function(e) {
+                            if (e.lengthComputable) {
+                                const percent = Math.round((e.loaded / e.total) * 100);
+                                $('.progress-bar-fill').css('width', percent + '%');
+                                $('.progress-text').text(percent + '%');
+                                showStatus(`กำลังอัพโหลด: ${percent}%`, 'processing');
+                            }
+                        });
+                        return xhr;
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            currentFilename = response.filename;
+                            $('.progress-text').text('อัพโหลดเสร็จสมบูรณ์');
+                            startVideoProcessing(response.filename);
+                            $('.upload-section').slideUp();
+                        }
+                    },
+                    error: function(xhr) {
+                        showError(xhr.responseJSON?.error || 'การอัพโหลดล้มเหลว');
+                        $('#uploadBtn').prop('disabled', false).text('อัพโหลดและเริ่มประมวลผล');
+                        $('.progress-bar-container').hide();
+                    }
+                });
+            });
+
+            $('#pauseButton').click(stopVideoProcessing);
+            $('#resumeButton').click(resumeVideoProcessing);
+        });
+
+        function startVideoProcessing(filename) {
+            $('.video-section').show();
+            $('.loading-overlay').show();
+            videoStreamActive = true;
+            currentFilename = filename;
+            
+            startVideoStream(filename);
+            startViolationUpdates(filename);
+            
+            showStatus('กำลังประมวลผลวิดีโอ...', 'processing');
+        }
+
+        function startVideoStream(filename) {
+            console.log('Starting video stream for:', filename);
+            videoStreamActive = true;
+            
+            const videoElement = document.getElementById('videoStream');
+            const streamUrl = `/video_feed/${filename}`;
+            
+            function updateStream() {
+                if (!videoStreamActive) return false;
+                videoElement.src = `${streamUrl}?t=${new Date().getTime()}`;
+                return true;
+            }
+
+            // Initial stream start
+            if (updateStream()) {
+                // Set up periodic refresh
+                streamUpdateInterval = setInterval(() => {
+                    if (!updateStream()) {
+                        clearInterval(streamUpdateInterval);
+                    }
+                }, 100);
+            }
+
+            videoElement.onload = function() {
+                $('.loading-overlay').fadeOut(300);
+            };
+
+            videoElement.onerror = function(e) {
+                if (videoStreamActive) {
+                    console.error('Video stream error:', e);
+                    $('.loading-overlay').fadeIn(300);
+                }
+            };
+        }
+
+        function stopVideoProcessing() {
+            videoStreamActive = false;
+            if (streamUpdateInterval) {
+                clearInterval(streamUpdateInterval);
+            }
+            
+            $('#videoStream').attr('src', '');
+            $('.loading-overlay').show();
+            $('#pauseButton').hide();
+            $('#resumeButton').show();
+            clearInterval(violationUpdateInterval);
+            
+            $.ajax({
+                url: `/stop_processing/${currentFilename}`,
+                type: 'POST',
+                success: function(response) {
+                    showStatus('หยุดการประมวลผลแล้ว', 'completed');
+                    $('.loading-overlay').hide();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error stopping processing:', error);
+                    showError('ไม่สามารถหยุดการประมวลผลได้');
+                    $('#pauseButton').show();
+                    $('#resumeButton').hide();
+                    $('.loading-overlay').hide();
+                }
+            });
+        }
+
+        function resumeVideoProcessing() {
+            if (!currentFilename) return;
+            
+            console.log('Resuming video processing...');
+            videoStreamActive = true;
+            $('.loading-overlay').show();
+            
+            startVideoStream(currentFilename);
+            startViolationUpdates(currentFilename);
+            
+            $('#resumeButton').hide();
+            $('#pauseButton').show();
+            showStatus('กำลังประมวลผลวิดีโอ...', 'processing');
+        }
+
+        function startViolationUpdates(filename) {
+            function updateViolations() {
+                if (!videoStreamActive) return;
+
+                $.get(`/violations/${filename}`, function(violations) {
+                    $('#violationsList').empty();
+                    
+                    violations.forEach(violation => {
+                        const card = $('<div>').addClass('violation-card');
+                        
+                        const imagesContainer = $('<div>').addClass('violation-images');
+                        
+                        const motoContainer = $('<div>').addClass('violation-image-container');
+                        motoContainer.append(
+                            $('<img>')
+                                .attr('src', `/detections/${violation.motorcycle_image}`)
+                                .attr('alt', 'Motorcycle'),
+                            $('<span>')
+                                .addClass('image-label')
+                                .text('มอเตอร์ไซค์')
+                        );
+                        
+                        const plateContainer = $('<div>').addClass('violation-image-container');
+                        plateContainer.append(
+                            $('<img>')
+                                .attr('src', `/detections/${violation.plate_image}`)
+                                .attr('alt', 'License Plate'),
+                            $('<span>')
+                                .addClass('image-label')
+                                .text('ป้ายทะเบียน')
+                        );
+                        
+                        imagesContainer.append(motoContainer, plateContainer);
+                        
+                        const info = $('<div>').addClass('violation-info');
+                        info.append(
+                            $('<div>').addClass('license-plate')
+                                .text(`ทะเบียน: ${violation.license_plate_text}`),
+                            $('<div>').addClass('violation-details')
+                                .text(`ความมั่นใจในการตรวจจับ: ${(violation.confidence * 100).toFixed(1)}%`),
+                            $('<div>').addClass('timestamp')
+                                .text(`เวลา: ${new Date(violation.timestamp).toLocaleString('th-TH')}`)
+                        );
+                        
+                        card.append(imagesContainer, info);
+                        $('#violationsList').prepend(card);
+                    });
+                }).fail(function(error) {
+                    console.error('Error fetching violations:', error);
+                    if (videoStreamActive) {
+                        showError('ไม่สามารถดึงข้อมูลการตรวจจับได้');
+                    }
+                });
+            }
+
+            updateViolations();
+            violationUpdateInterval = setInterval(updateViolations, 2000);
+        }
+
+        function resetUploadForm() {
+            $('#uploadForm')[0].reset();
+            $('.selected-file').text('');
+            $('#uploadBtn')
+                .hide()
+                .prop('disabled', false)
+                .text('อัพโหลดและเริ่มประมวลผล');
+            $('#uploadError').hide();
+            $('.status').text('').removeClass('processing completed error');
+            $('.progress-bar-container').hide();
+            $('.progress-bar-fill').css('width', '0%');
+            $('.progress-text').text('0%');
+        }
+
+        function showError(message) {
+            $('#uploadError').text(message).show();
+            $('.status')
+                .text('เกิดข้อผิดพลาด')
+                .removeClass('processing completed')
+                .addClass('error');
+        }
+
+        function showStatus(message, status) {
+            $('.status')
+                .text(message)
+                .removeClass('processing completed error')
+                .addClass(status);
+        }
+    </script>
+</body>
+</html>
